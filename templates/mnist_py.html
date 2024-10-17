@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dibujar en Canvas</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            background-color: #f5f5f5;
+            font-family: Arial, sans-serif;
+        }
+
+        canvas {
+            border: 1px solid #000;
+            cursor: crosshair;
+        }
+
+        #smallCanvas {
+            width: 28px;
+            height: 28px;
+        }
+
+        #buttons {
+            display: flex;
+            gap: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #resultado {
+            font-size: 240px;
+        }
+
+        #probabilidades {
+            display: flex;
+            flex-direction: column;
+            font-size: 40px;
+            gap: 10px;
+        }
+
+    </style>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+</head>
+
+<body>
+    <div id="columna">
+        <canvas id="largeCanvas" width="500" height="500"></canvas>
+        <canvas id="smallCanvas" width="28" height="28"></canvas>
+        <div id="buttons">
+            <button onclick="predecir()">Predicción</button>
+            <button onclick="clearCanvas()">Borrar</button>
+        </div>
+    </div>
+    <div id="columna">
+        <div id="probabilidades"></div>
+    </div>
+    <div id="columna columna3">
+        <div id="resultado"></div>
+    </div>
+
+
+
+
+    <script>
+        const largeCanvas = document.getElementById('largeCanvas');
+        const smallCanvas = document.getElementById('smallCanvas');
+        const ctxLarge = largeCanvas.getContext('2d');
+        const ctxSmall = smallCanvas.getContext('2d');
+
+        let drawing = false;
+
+        function draw(event, ctx, canvas, lineWidth) {
+            if (!drawing) return;
+            ctx.lineWidth = lineWidth;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = 'black';
+
+            ctx.lineTo(event.clientX - canvas.offsetLeft, event.clientY - canvas.offsetTop);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(event.clientX - canvas.offsetLeft, event.clientY - canvas.offsetTop);
+        }
+
+        largeCanvas.addEventListener('mousedown', () => {
+            drawing = true;
+        });
+
+        largeCanvas.addEventListener('mouseup', () => {
+            drawing = false;
+            ctxLarge.beginPath();
+            ctxSmall.beginPath();
+        });
+
+        largeCanvas.addEventListener('mousemove', (e) => {
+            draw(e, ctxLarge, largeCanvas, 20); // Dibuja en el canvas grande
+            
+            // Calcula las coordenadas proporcionales para el canvas pequeño
+            const scaleX = smallCanvas.width / largeCanvas.width;
+            const scaleY = smallCanvas.height / largeCanvas.height;
+
+            const smallEvent = {
+                clientX: (e.clientX - largeCanvas.offsetLeft) * scaleX + smallCanvas.offsetLeft,
+                clientY: (e.clientY - largeCanvas.offsetTop) * scaleY + smallCanvas.offsetTop,
+                ...e
+            };
+            
+            draw(smallEvent, ctxSmall, smallCanvas, 2); // Dibuja en el canvas pequeño con un pincel de tamaño 2
+        });
+
+        function clearCanvas() {
+            ctxLarge.clearRect(0, 0, largeCanvas.width, largeCanvas.height);
+            ctxSmall.clearRect(0, 0, smallCanvas.width, smallCanvas.height);
+            $("#resultado").text("");
+        }
+
+        function predecir() {
+            var $SCRIPT_ROOT = {{request.script_root|tojson|safe}};
+            var canvasObj = document.getElementById("smallCanvas");
+            var img = canvasObj.toDataURL('image/png');
+            $.ajax({
+                type: "POST",
+                url: $SCRIPT_ROOT + "/predecir",
+                data: { "imagen_data": img },
+                success: function(data){
+                    $('#resultado').text(data.prediccion);
+                }
+            });
+        }
+
+    </script>
+
+</body>
+
+</html>
